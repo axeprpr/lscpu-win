@@ -35,7 +35,13 @@ $releaseApiUrl = "https://api.github.com/repos/$Owner/$Repository/releases/tags/
 $zipAsset = Get-ReleaseAsset -ApiUrl $releaseApiUrl -WantedName $assetName
 $shaAsset = Get-ReleaseAsset -ApiUrl $releaseApiUrl -WantedName "$assetName.sha256"
 $assetUrl = $zipAsset.browser_download_url
-$shaLine = (Invoke-WebRequest -Uri $shaAsset.browser_download_url -Headers $headers -UseBasicParsing).Content.Trim()
+$shaResponse = Invoke-WebRequest -Uri $shaAsset.browser_download_url -Headers $headers -UseBasicParsing
+$shaContent = $shaResponse.Content
+if ($shaContent -is [byte[]]) {
+    $shaLine = [System.Text.Encoding]::UTF8.GetString($shaContent).Trim()
+} else {
+    $shaLine = ([string]$shaContent).Trim()
+}
 $sha256 = ($shaLine -split '\s+')[0].ToUpperInvariant()
 
 $packageIdentifier = $env:PACKAGE_IDENTIFIER
