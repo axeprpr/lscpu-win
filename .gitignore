@@ -1,5 +1,9 @@
 dist/
 .gocache/
+winget-logs/
+winget-logs-011/
+winget-logs.zip
+winget-logs-011.zip
 *.exe
 *.zip
 *.sha256

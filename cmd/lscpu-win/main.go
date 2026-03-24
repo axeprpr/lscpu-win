@@ -46,18 +46,22 @@ type cacheKey struct {
 }
 
 type cpuInfo struct {
-	Architecture   string
-	LogicalCPUs    int
-	VendorID       string
-	ModelName      string
-	Family         string
-	Model          string
-	Stepping       string
-	SocketCount    int
-	CoreCount      int
-	NumaNodeCount  int
-	MaxMHz         string
-	Caches         map[cacheKey]uint64
+	Architecture       string
+	LogicalCPUs        int
+	VendorID           string
+	ModelName          string
+	Family             string
+	Model              string
+	Stepping           string
+	SocketCount        int
+	CoreCount          int
+	NumaNodeCount      int
+	MaxMHz             string
+	Caches             map[cacheKey]uint64
+	Flags              []string
+	Virtualization     string
+	HypervisorVendor   string
+	HypervisorDetected bool
 }
 
 func main() {
@@ -86,6 +90,15 @@ func main() {
 	for _, label := range orderedCacheLabels(info.Caches) {
 		printRow(label, formatBytes(info.Caches[parseCacheLabel(label)]))
 	}
+	if info.Virtualization != "" {
+		printRow("Virtualization", info.Virtualization)
+	}
+	if info.HypervisorDetected {
+		printRow("Hypervisor", fallback(info.HypervisorVendor, "present"))
+	}
+	if len(info.Flags) > 0 {
+		printRow("Flags", strings.Join(info.Flags, " "))
+	}
 }
 
 func collectCPUInfo() (*cpuInfo, error) {
@@ -109,7 +122,17 @@ func collectCPUInfo() (*cpuInfo, error) {
 	info.Model = model
 	info.Stepping = stepping
 
+	fillInstructionInfo(info)
+
 	return info, nil
+}
+
+func fillInstructionInfo(info *cpuInfo) {
+	flags, virtualization, hypervisorVendor, hypervisorDetected := detectFlags()
+	info.Flags = flags
+	info.Virtualization = virtualization
+	info.HypervisorVendor = hypervisorVendor
+	info.HypervisorDetected = hypervisorDetected
 }
 
 func fillTopology(info *cpuInfo) error {
