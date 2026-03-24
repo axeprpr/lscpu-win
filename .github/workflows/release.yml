@@ -34,7 +34,10 @@ jobs:
       - name: Archive binary
         shell: pwsh
         run: |
-          Compress-Archive -Path "dist/lscpu-win-${{ matrix.arch }}.exe" -DestinationPath "dist/lscpu-win_${{ github.ref_name }}_windows_${{ matrix.arch }}.zip" -Force
+          $stage = Join-Path $PWD "package/${{ matrix.arch }}"
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item "dist/lscpu-win-${{ matrix.arch }}.exe" (Join-Path $stage "lscpu-win-${{ matrix.arch }}.exe") -Force
+          Compress-Archive -Path (Join-Path $stage "*") -DestinationPath "dist/lscpu-win_${{ github.ref_name }}_windows_${{ matrix.arch }}.zip" -Force
           Get-FileHash "dist/lscpu-win_${{ github.ref_name }}_windows_${{ matrix.arch }}.zip" -Algorithm SHA256 |
             ForEach-Object { "$($_.Hash.ToLower())  lscpu-win_${{ github.ref_name }}_windows_${{ matrix.arch }}.zip" } |
             Set-Content "dist/lscpu-win_${{ github.ref_name }}_windows_${{ matrix.arch }}.zip.sha256"
