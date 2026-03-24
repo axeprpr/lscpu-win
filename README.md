@@ -45,7 +45,7 @@ Set these repository variables before enabling the `winget.yml` workflow:
 - `HOMEPAGE` such as `https://github.com/axeprpr/lscpu-win`
 - `WINGET_FORK_OWNER` for your GitHub username that owns the `winget-pkgs` fork
 
-Set these repository secrets:
+Set this repository secret or variable:
 
 - `WINGET_PKGS_PAT` with permission to push to your `winget-pkgs` fork and open pull requests
 

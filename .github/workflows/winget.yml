@@ -27,6 +27,7 @@ jobs:
       LICENSE_URL: ${{ vars.LICENSE_URL }}
       HOMEPAGE: ${{ vars.HOMEPAGE }}
       WINGET_FORK_OWNER: ${{ vars.WINGET_FORK_OWNER }}
+      WINGET_AUTH_TOKEN: ${{ secrets.WINGET_PKGS_PAT || vars.WINGET_PKGS_PAT }}
 
     steps:
       - uses: actions/checkout@v4
@@ -49,7 +50,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ env.WINGET_FORK_OWNER }}/winget-pkgs
-          token: ${{ secrets.WINGET_PKGS_PAT }}
+          token: ${{ env.WINGET_AUTH_TOKEN }}
           path: winget-pkgs
 
       - name: Copy manifest into fork
@@ -76,7 +77,7 @@ jobs:
       - name: Open pull request
         shell: pwsh
         env:
-          GH_TOKEN: ${{ secrets.WINGET_PKGS_PAT }}
+          GH_TOKEN: ${{ env.WINGET_AUTH_TOKEN }}
         run: |
           $branch = "auto/$env:PACKAGE_IDENTIFIER/$($env:TAG_NAME)"
           $title = "$($env:PACKAGE_IDENTIFIER) version $($env:TAG_NAME.TrimStart('v'))"
