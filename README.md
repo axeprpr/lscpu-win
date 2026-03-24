@@ -41,8 +41,8 @@ Set these repository variables before enabling the `winget.yml` workflow:
 - `SHORT_DESCRIPTION` such as `Windows-native lscpu replacement`
 - `MONIKER` such as `lscpu-win`
 - `LICENSE` such as `MIT`
-- `LICENSE_URL` such as `https://github.com/<owner>/<repo>/blob/main/LICENSE`
-- `HOMEPAGE` such as `https://github.com/<owner>/<repo>`
+- `LICENSE_URL` such as `https://github.com/axeprpr/lscpu-win/blob/main/LICENSE`
+- `HOMEPAGE` such as `https://github.com/axeprpr/lscpu-win`
 - `WINGET_FORK_OWNER` for your GitHub username that owns the `winget-pkgs` fork
 
 Set these repository secrets:
