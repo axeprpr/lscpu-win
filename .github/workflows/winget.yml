@@ -1,0 +1,93 @@
+name: winget
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to publish, for example v1.0.0
+        required: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  update-winget:
+    runs-on: windows-latest
+    env:
+      TAG_NAME: ${{ github.event.release.tag_name || inputs.tag }}
+      PACKAGE_IDENTIFIER: ${{ vars.PACKAGE_IDENTIFIER }}
+      PACKAGE_NAME: ${{ vars.PACKAGE_NAME }}
+      PUBLISHER: ${{ vars.PUBLISHER }}
+      SHORT_DESCRIPTION: ${{ vars.SHORT_DESCRIPTION }}
+      MONIKER: ${{ vars.MONIKER }}
+      LICENSE: ${{ vars.LICENSE }}
+      LICENSE_URL: ${{ vars.LICENSE_URL }}
+      HOMEPAGE: ${{ vars.HOMEPAGE }}
+      WINGET_FORK_OWNER: ${{ vars.WINGET_FORK_OWNER }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate variables
+        shell: pwsh
+        run: |
+          foreach ($name in "PACKAGE_IDENTIFIER","PACKAGE_NAME","PUBLISHER","SHORT_DESCRIPTION","MONIKER","LICENSE","LICENSE_URL","HOMEPAGE","WINGET_FORK_OWNER") {
+            if (-not (Get-Item -Path "Env:$name" -ErrorAction SilentlyContinue)) {
+              throw "Missing repository variable: $name"
+            }
+          }
+
+      - name: Generate manifest
+        shell: pwsh
+        run: |
+          .\scripts\New-WingetManifest.ps1 -Owner "${{ github.repository_owner }}" -Repository "${{ github.event.repository.name }}" -Tag $env:TAG_NAME
+
+      - name: Checkout winget fork
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.WINGET_FORK_OWNER }}/winget-pkgs
+          token: ${{ secrets.WINGET_PKGS_PAT }}
+          path: winget-pkgs
+
+      - name: Copy manifest into fork
+        shell: pwsh
+        run: |
+          $version = $env:TAG_NAME.TrimStart("v")
+          $first = $env:PACKAGE_IDENTIFIER.Substring(0,1).ToLowerInvariant()
+          $target = Join-Path "winget-pkgs/manifests" (Join-Path $first (Join-Path ($env:PACKAGE_IDENTIFIER -replace '\.', '\') $version))
+          New-Item -ItemType Directory -Force -Path $target | Out-Null
+          Copy-Item "out/winget/*" $target -Force
+
+      - name: Commit manifest
+        shell: pwsh
+        working-directory: winget-pkgs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          $branch = "auto/${env:PACKAGE_IDENTIFIER}/$($env:TAG_NAME)"
+          git checkout -b $branch
+          git add manifests
+          git commit -m "$($env:PACKAGE_IDENTIFIER) version $($env:TAG_NAME.TrimStart('v'))"
+          git push origin $branch
+
+      - name: Open pull request
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.WINGET_PKGS_PAT }}
+        run: |
+          $branch = "auto/$env:PACKAGE_IDENTIFIER/$($env:TAG_NAME)"
+          $title = "$($env:PACKAGE_IDENTIFIER) version $($env:TAG_NAME.TrimStart('v'))"
+          $body = "Automated update generated from ${{ github.repository }} release $($env:TAG_NAME)."
+          $payload = @{
+            title = $title
+            head = "$($env:WINGET_FORK_OWNER):$branch"
+            base = "master"
+            body = $body
+          } | ConvertTo-Json
+          Invoke-RestMethod -Method Post -Uri "https://api.github.com/repos/microsoft/winget-pkgs/pulls" -Headers @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            Accept = "application/vnd.github+json"
+          } -Body $payload -ContentType "application/json"

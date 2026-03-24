@@ -1,0 +1,47 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build binary
+        shell: pwsh
+        run: |
+          $env:GOOS = "windows"
+          $env:GOARCH = "${{ matrix.arch }}"
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          go build -trimpath -ldflags="-s -w" -o "dist/lscpu-win-${{ matrix.arch }}.exe" ./cmd/lscpu-win
+
+      - name: Archive binary
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "dist/lscpu-win-${{ matrix.arch }}.exe" -DestinationPath "dist/lscpu-win_${{ github.ref_name }}_windows_${{ matrix.arch }}.zip" -Force
+          Get-FileHash "dist/lscpu-win_${{ github.ref_name }}_windows_${{ matrix.arch }}.zip" -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash.ToLower())  lscpu-win_${{ github.ref_name }}_windows_${{ matrix.arch }}.zip" } |
+            Set-Content "dist/lscpu-win_${{ github.ref_name }}_windows_${{ matrix.arch }}.zip.sha256"
+
+      - name: Publish release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/lscpu-win_${{ github.ref_name }}_windows_${{ matrix.arch }}.zip
+            dist/lscpu-win_${{ github.ref_name }}_windows_${{ matrix.arch }}.zip.sha256

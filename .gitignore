@@ -1,0 +1,5 @@
+dist/
+.gocache/
+*.exe
+*.zip
+*.sha256
